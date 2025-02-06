@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Task Management</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="#">Task Management</a>
+        <div class="d-flex">
+          <span class="navbar-text me-3">
+            Welcome, {{ user.username }}
+          </span>
+          <a href="{% url 'logout_view' %}" class="btn btn-outline-danger">
+            Logout
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Dropdown for selecting projects -->
+    <div class="container mt-4">
+      <div class="row">
+        <div class="col-md-12 text-end">
+          <label for="projectDropdown" class="form-label">Select Project:</label>
+          <select
+            id="projectDropdown"
+            class="form-select"
+            onchange="window.location.href=this.value"
+          >
+            <option value="">-- Select Project --</option>
+            {% for project in projects %}
+              <option
+                value="{% url 'project_task_list' project.id %}"
+                {% if project.id == selected_project.id %} selected {% endif %}
+              >
+                {{ project.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Task List Table -->
+    <div class="container mt-5">
+      <h1 class="text-center mb-4">Task List</h1>
+      <table class="table table-bordered table-hover table-striped table-sm table-responsive">
+        <thead>
+          <tr>
+            <th>S.No</th>
+            <th>Status</th>
+            <th class="w-auto">Title</th>
+            <th>Description</th>
+            <th class="w-auto">Priority</th>
+            <th class="w-auto">Due Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for task in tasks %}
+          <tr id="task-{{ task.id }}">
+            <td>{{ forloop.counter }}</td>
+            <td>
+              {% if task.completed %}
+                ✅
+              {% else %}
+                <input
+                  type="checkbox"
+                  onclick="window.location.href='{% url 'complete_task' task.id %}'"
+                />
+              {% endif %}
+            </td>
+            <td class="w-auto">
+              <input
+                type="text"
+                name="title"
+                class="form-control"
+                value="{{ task.title }}"
+                required
+                onblur="updateField({{ task.id }}, 'title', this.value)"
+              />
+            </td>
+            <td class="text-truncate" style="max-width: 250px;">
+              <input
+                type="text"
+                name="description"
+                class="form-control"
+                value="{{ task.description }}"
+                required
+                onblur="updateField({{ task.id }}, 'description', this.value)"
+              />
+            </td>
+            <td class="w-auto">
+              <select
+                name="priority"
+                class="form-select"
+                onchange="updateField({{ task.id }}, 'priority', this.value)"
+              >
+                <option value="Low" {% if task.priority == 'Low' %}selected{% endif %}>Low</option>
+                <option value="Medium" {% if task.priority == 'Medium' %}selected{% endif %}>Medium</option>
+                <option value="High" {% if task.priority == 'High' %}selected{% endif %}>High</option>
+              </select>
+            </td>
+            <td class="w-auto">
+              <input
+                type="date"
+                name="due_date"
+                class="form-control"
+                value="{{ task.due_date|date:'Y-m-d' }}"
+                onblur="updateField({{ task.id }}, 'due_date', this.value)"
+              />
+            </td>
+            <td>
+              <button
+                class="btn btn-danger btn-sm ms-2"
+                onclick="window.location.href='{% url 'delete_task' task.id %}'"
+              >
+                Delete
+              </button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="text-center">No tasks yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <a href="{% url 'add_task' %}" class="btn btn-success mt-4">Add Task</a>
+    </div>
+
+    <script>
+      function updateField(taskId, fieldName, fieldValue) {
+        fetch("{% url 'update_task' 0 %}".replace('0', taskId), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}',
+          },
+          body: JSON.stringify({
+            field_name: fieldName,
+            field_value: fieldValue,
+          }),
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            console.log("Field updated!");
+          } else {
+            console.error("Update failed.");
+          }
+        })
+        .catch(error => {
+          console.error("Error:", error);
+        });
+      }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

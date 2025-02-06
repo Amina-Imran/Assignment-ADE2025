@@ -1,0 +1,187 @@
+from django.shortcuts import render, redirect, get_object_or_404
+from .models import Task, Project
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User
+from django.contrib.auth.models import User
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.shortcuts import render, redirect
+
+
+# Display tasks for a specific project for the admin
+def admin_task_list(request, project_id=None):
+    if project_id:
+        tasks = Task.objects.filter(project_id=project_id)
+    else:
+        tasks = Task.objects.all()
+    
+    projects = Project.objects.all()
+    
+    return render(request, 'tasks/admin.html', {'tasks': tasks, 'projects': projects, 'project_id': project_id})
+
+# Display tasks for a specific project for the user
+def user_task_list(request, project_id=None):
+    if project_id:
+        tasks = Task.objects.filter(project_id=project_id)
+    else:
+        tasks = Task.objects.all()
+    
+    projects = Project.objects.all()
+    
+    return render(request, 'tasks/user.html', {'tasks': tasks, 'projects': projects, 'project_id': project_id})
+
+# Add a task for a specific project (accessible by both admin and user)
+def add_task(request):
+    if request.method == 'POST':
+        title = request.POST['title']
+        description = request.POST['description']
+        due_date = request.POST['due_date']
+        priority = request.POST['priority']
+        project_id = request.POST['project_id']
+        
+        project = get_object_or_404(Project, id=project_id)
+        
+        Task.objects.create(
+            title=title,
+            description=description,
+            due_date=due_date,
+            priority=priority,
+            completed=False,
+            project=project
+        )
+        
+        return redirect('task_list', project_id=project_id)
+    
+    projects = Project.objects.all()
+    return render(request, 'tasks/add_task.html', {'projects': projects})
+
+# Mark a task as completed (accessible by both admin and user)
+def complete_task(request, task_id):
+    task = get_object_or_404(Task, id=task_id)
+    
+    if not task.completed:
+        task.completed = True
+        task.save()
+        
+    return redirect('task_list', project_id=task.project.id)
+
+# Delete a task (admin only)
+def delete_task(request, task_id):
+    task = get_object_or_404(Task, id=task_id)
+    project_id = task.project.id
+    task.delete()
+    return redirect('task_list', project_id=project_id)
+
+@csrf_exempt
+def update_task(request, task_id):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        task = get_object_or_404(Task, id=task_id)
+        
+        field_name = data.get('field_name')
+        field_value = data.get('field_value')
+
+        if field_name in ['title', 'description', 'priority', 'due_date']:
+            setattr(task, field_name, field_value)
+            task.save()
+            return JsonResponse({'success': True})
+        
+    return JsonResponse({'success': False}, status=400)
+
+# Sign-in view
+
+def sign_in(request):
+    if request.method == 'POST':
+        username = request.POST['username']
+        password = request.POST['password']
+
+        # Authenticate user using the default User model
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            login(request, user)
+
+            if user.is_superuser:
+                return redirect("admin_panel")
+            elif user.is_staff:  # Check if the user is an admin
+                return redirect('admin_task_list', project_id=0)  # Redirect to admin dashboard
+            else:
+                return redirect('user_task_list', project_id=0)  # Redirect to user dashboard
+        else:
+            error_message = "Invalid username or password"
+            return render(request, 'tasks/login.html', {'error_message': error_message})
+
+    return render(request, 'tasks/login.html')
+
+
+def sign_up(request):
+    if request.method == 'POST':
+        username = request.POST['username']
+        password = request.POST['password']
+        user = User.objects.create_user(username=username, password=password)
+        user.save()
+        return redirect('sign_in')
+    
+    return render(request, 'tasks/sign_up.html')
+
+def logout_view(request):
+    logout(request)
+    return redirect('sign_in')
+
+
+from django.contrib.auth.models import User  # Using Django's default User model
+from django.contrib.auth.decorators import user_passes_test
+
+# Helper function to check if user is a superuser
+def is_superuser(user):
+    return user.is_superuser
+
+# Only superusers can access this view
+@user_passes_test(is_superuser)
+def create_admin(request):
+    if request.method == 'POST':
+        username = request.POST['username']
+        password = request.POST['password']
+
+        # Create a new admin user
+        admin_user = User.objects.create_user(username=username, password=password)
+        admin_user.is_staff = True  # Mark them as an admin
+        admin_user.save()
+
+        return redirect('/admin/')  # Redirect back to Django admin
+
+    return render(request, 'tasks/create_admin.html')  # Create a simple form for admin creation
+
+# Helper function to check if the user is a superuser
+def is_superuser(user):
+    return user.is_superuser
+
+from django.contrib import messages
+
+@login_required
+@user_passes_test(is_superuser)
+def create_admin(request):
+    if request.method == 'POST':
+        username = request.POST['username']
+        password = request.POST['password']
+
+        # Create user
+        new_user = User.objects.create_user(username=username, password=password)
+
+        # If the logged-in user is a superuser, make the new user an admin
+        new_user.is_staff = True  
+        new_user.save()
+
+        # Display success message
+        messages.success(request, "User added successfully!")
+
+    return render(request, 'tasks/sign_up.html')
+
+
+@login_required
+@user_passes_test(is_superuser)  # Ensure only superusers can access
+def admin_panel(request):
+    admins = User.objects.filter(is_staff=True)  # List all admins
+    return render(request, 'tasks/admin_panel.html', {'admins': admins})

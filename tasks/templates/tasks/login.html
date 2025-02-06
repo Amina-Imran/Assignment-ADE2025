@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign In</title>
+  </head>
+  <body>
+    <h1>Sign In</h1>
+
+    {% if error_message %}
+    <p style="color: red">{{ error_message }}</p>
+    {% endif %}
+
+    <form method="POST">
+      {% csrf_token %}
+
+      <!-- Username Field -->
+      <label for="username">Username:</label>
+      <input
+        type="text"
+        name="username"
+        required
+        placeholder="Enter your username"
+      /><br /><br />
+
+      <!-- Password Field -->
+      <label for="password">Password:</label>
+      <input
+        type="password"
+        name="password"
+        required
+        placeholder="Enter your password"
+      /><br /><br />
+
+      <!-- Submit Button -->
+      <button type="submit">Sign In</button>
+    </form>
+
+    <p>Don't have an account? <a href="{% url 'sign_up' %}">Sign Up</a></p>
+    <!-- Link to Sign Up Page -->
+  </body>
+</html>

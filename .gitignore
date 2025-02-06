@@ -1,0 +1,32 @@
+# Python/Django specific files
+*.pyc
+__pycache__/
+db.sqlite3
+*.sqlite3
+
+# Virtual environment
+venv/
+env/
+
+# Logs and cache
+*.log
+*.pot
+*.pyc
+*.pyo
+*.pyd
+.Python
+migrations/__pycache__/
+staticfiles/
+media/
+
+# Django settings (if using environment-specific settings)
+.env
+*.env
+
+# IDE files (VSCode, PyCharm)
+.vscode/
+.idea/
+*.swp
+
+# Node modules (if using frontend assets)
+node_modules/
