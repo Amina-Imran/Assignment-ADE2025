@@ -4,31 +4,261 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Panel</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
   </head>
-  <body>
-    <h1>Admin Panel</h1>
+  <body class="bg-light">
+    <div class="container mt-5">
+      <h1 class="text-center">Admin Panel</h1>
 
-    <!-- List of Admins -->
-    <h2>Admins</h2>
-    <ul>
-      {% for admin in admins %}
-      <li>{{ admin.username }}</li>
-      {% empty %}
-      <li>No admins found</li>
-      {% endfor %}
-    </ul>
+      <!-- Admin List -->
+      <div class="card mt-4">
+        <div class="card-header">
+          <h2>Admins</h2>
+        </div>
+        <ul class="list-group list-group-flush" id="adminList">
+          {% for admin in admins %}
+          <li
+            class="list-group-item d-flex justify-content-between align-items-center"
+            data-username="{{ admin.username }}"
+          >
+            <span>{{ admin.username }}</span>
+            <div>
+              <button
+                class="btn btn-warning btn-sm me-2"
+                onclick="openChangePasswordModal('{{ admin.username }}')"
+              >
+                Change Password
+              </button>
+              <button
+                class="btn btn-danger btn-sm"
+                onclick="confirmDeleteUser('{{ admin.username }}')"
+              >
+                Delete
+              </button>
+            </div>
+          </li>
+          {% empty %}
+          <li class="list-group-item text-muted">No admins found</li>
+          {% endfor %}
+        </ul>
+      </div>
 
-    <!-- Add New Admin Form -->
-    <h2>Add New Admin</h2>
-    <form method="POST" action="{% url 'create_admin' %}">
-      {% csrf_token %}
-      <label for="username">Username:</label>
-      <input type="text" name="username" required /><br /><br />
-      <label for="password">Password:</label>
-      <input type="password" name="password" required /><br /><br />
-      <button type="submit">Add Admin</button>
-    </form>
+      <!-- Add New Admin Button -->
+      <div class="text-center mt-4">
+        <button
+          class="btn btn-primary"
+          data-bs-toggle="modal"
+          data-bs-target="#addAdminModal"
+        >
+          Add New Admin
+        </button>
+      </div>
+    </div>
 
-    <p><a href="{% url 'logout_view' %}">Logout</a></p>
+    <!-- Modal for Adding New Admin -->
+    <div
+      class="modal fade"
+      id="addAdminModal"
+      tabindex="-1"
+      aria-labelledby="addAdminModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Add New Admin</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <form id="adminForm">
+              {% csrf_token %}
+              <div class="mb-3">
+                <label class="form-label">Username</label>
+                <input
+                  type="text"
+                  id="username"
+                  name="username"
+                  class="form-control"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Password</label>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  class="form-control"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Confirm Password</label>
+                <input
+                  type="password"
+                  id="confirm_password"
+                  class="form-control"
+                  required
+                />
+              </div>
+              <div class="modal-footer">
+                <button type="submit" class="btn btn-success">Add Admin</button>
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  data-bs-dismiss="modal"
+                >
+                  Close
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div
+      class="modal fade"
+      id="changePasswordModal"
+      tabindex="-1"
+      aria-labelledby="changePasswordModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Change Password</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <form id="changePasswordForm">
+              {% csrf_token %}
+              <input
+                type="hidden"
+                id="changePasswordUsername"
+                name="username"
+              />
+              <div class="mb-3">
+                <label class="form-label">New Password</label>
+                <input
+                  type="password"
+                  id="newPassword"
+                  name="new_password"
+                  class="form-control"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Confirm New Password</label>
+                <input
+                  type="password"
+                  id="confirmNewPassword"
+                  class="form-control"
+                  required
+                />
+              </div>
+              <div class="modal-footer">
+                <button type="submit" class="btn btn-success">
+                  Update Password
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  data-bs-dismiss="modal"
+                >
+                  Close
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Logout Button -->
+    <div class="text-center mt-4">
+      <a href="{% url 'logout_view' %}" class="btn btn-danger">Logout</a>
+    </div>
+
+    <!-- Bootstrap JS & Custom JS -->
+    <script>
+      function openChangePasswordModal(username) {
+        document.getElementById("changePasswordUsername").value = username;
+        new bootstrap.Modal(
+          document.getElementById("changePasswordModal")
+        ).show();
+      }
+
+      function confirmDeleteUser(username) {
+        if (confirm("Are you sure you want to delete this user?")) {
+          fetch(`/delete_user/${username}/`, {
+            method: "POST",
+            headers: { "X-CSRFToken": "{{ csrf_token }}" },
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.status === "success") {
+                alert("User deleted successfully!");
+                let userItem = document.querySelector(
+                  `li[data-username="${username}"]`
+                );
+                if (userItem) {
+                  userItem.remove(); // Remove the user from UI
+                }
+              } else {
+                alert(data.message);
+              }
+            })
+            .catch((error) => console.error("Error:", error));
+        }
+      }
+
+      document
+        .getElementById("changePasswordForm")
+        .addEventListener("submit", function (event) {
+          event.preventDefault();
+          let password = document.getElementById("newPassword").value;
+          let confirmPassword =
+            document.getElementById("confirmNewPassword").value;
+          if (password !== confirmPassword) {
+            alert("Passwords do not match!");
+            return;
+          }
+
+          let formData = new FormData(this);
+          fetch("/change_password/", {
+            method: "POST",
+            body: formData,
+            headers: { "X-CSRFToken": "{{ csrf_token }}" },
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.status === "success") {
+                alert("Password updated successfully!");
+                let modal = bootstrap.Modal.getInstance(
+                  document.getElementById("changePasswordModal")
+                );
+                modal.hide();
+              } else {
+                alert(data.message);
+              }
+            })
+            .catch((error) => console.error("Error:", error));
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   </body>
 </html>

@@ -6,7 +6,7 @@ urlpatterns = [
     path('', views.sign_in, name='sign_in'),
     path('sign-up/', views.sign_up, name='sign_up'), 
     path('logout/', views.logout_view, name='logout_view'), 
-    path('custom-admin/', views.admin_panel, name='admin_panel'),  # Admin panel URL
+    path('custom-admin/', views.admin_panel, name='custom-admin'),  # Admin panel URL
     path('admin/create/', views.create_admin, name='create_admin'),
 
     # After login, redirect based on user role

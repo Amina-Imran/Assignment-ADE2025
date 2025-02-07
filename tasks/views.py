@@ -8,7 +8,12 @@ from django.contrib.auth.models import User
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.shortcuts import render, redirect
-
+from django.contrib import messages
+from django.contrib.auth.models import User
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from django.http import JsonResponse
 
 # Display tasks for a specific project for the admin
 def admin_task_list(request, project_id=None):
@@ -104,7 +109,7 @@ def sign_in(request):
             login(request, user)
 
             if user.is_superuser:
-                return redirect("admin_panel")
+                return redirect("custom-admin")
             elif user.is_staff:  # Check if the user is an admin
                 return redirect('admin_task_list', project_id=0)  # Redirect to admin dashboard
             else:
@@ -158,8 +163,6 @@ def create_admin(request):
 def is_superuser(user):
     return user.is_superuser
 
-from django.contrib import messages
-
 @login_required
 @user_passes_test(is_superuser)
 def create_admin(request):
@@ -167,21 +170,57 @@ def create_admin(request):
         username = request.POST['username']
         password = request.POST['password']
 
-        # Create user
-        new_user = User.objects.create_user(username=username, password=password)
+        if User.objects.filter(username=username).exists():
+            return JsonResponse({'status': 'error', 'message': 'Username already exists'}, status=400)
 
-        # If the logged-in user is a superuser, make the new user an admin
+        new_user = User.objects.create_user(username=username, password=password)
         new_user.is_staff = True  
         new_user.save()
 
-        # Display success message
-        messages.success(request, "User added successfully!")
+        return JsonResponse({'status': 'success', 'message': 'User added successfully!', 'username': username})
 
-    return render(request, 'tasks/sign_up.html')
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
 
 
 @login_required
 @user_passes_test(is_superuser)  # Ensure only superusers can access
 def admin_panel(request):
-    admins = User.objects.filter(is_staff=True)  # List all admins
+    admins = User.objects.filter(is_staff=True, is_superuser=False)  # List all admins
     return render(request, 'tasks/admin_panel.html', {'admins': admins})
+
+
+
+def is_staff(user):
+    return user.is_staff
+
+@login_required
+def change_password(request):
+    if request.method == "POST":
+        username = request.POST.get("username")
+        new_password = request.POST.get("new_password")
+
+        if request.user.is_superuser or request.user.username == username:
+            user = get_object_or_404(User, username=username)
+            if user.is_staff and not request.user.is_superuser:
+                return JsonResponse({"status": "error", "message": "Only superusers can change staff passwords."})
+
+            user.set_password(new_password)
+            user.save()
+            return JsonResponse({"status": "success"})
+        
+        return JsonResponse({"status": "error", "message": "Permission denied."})
+
+@login_required
+@user_passes_test(is_superuser)
+def delete_user(request, username):
+    user_to_delete = get_object_or_404(User, username=username)
+
+    # Ensure the user being deleted is a staff member and not a superuser
+    if user_to_delete.is_superuser:
+        return JsonResponse({"status": "error", "message": "Cannot delete a superuser."}, status=403)
+
+    if user_to_delete.is_staff:
+        user_to_delete.delete()
+        return JsonResponse({"status": "success"})
+    
+    return JsonResponse({"status": "error", "message": "User is not a staff member."}, status=403)
