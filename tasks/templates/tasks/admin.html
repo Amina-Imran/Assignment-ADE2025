@@ -33,12 +33,12 @@
           <select
             id="projectDropdown"
             class="form-select"
-            onchange="window.location.href=this.value"
+            onchange="loadTasks(this.value)"
           >
             <option value="">-- Select Project --</option>
             {% for project in projects %}
               <option
-                value="{% url 'project_task_list' project.id %}"
+                value="{{ project.id }}"
                 {% if project.id == selected_project.id %} selected {% endif %}
               >
                 {{ project.name }}
@@ -135,16 +135,115 @@
         </tbody>
       </table>
 
-      <a href="{% url 'add_task' %}" class="btn btn-success mt-4">Add Task</a>
+      <button type="button" class="btn btn-success mt-4" onclick="openAddTaskModal()">
+        Add Task
+      </button>
     </div>
 
+        <div
+      class="modal fade"
+      id="addTaskModal"
+      tabindex="-1"
+      aria-labelledby="addTaskModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Add Task</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <form id="addTaskForm">
+              {% csrf_token %}
+            
+              <!-- Hidden field to store the selected project ID -->
+              <input type="hidden" id="taskProjectId" name="project_id" />
+            
+              <!-- Task Title -->
+              <div class="mb-3">
+                <label class="form-label">Title</label>
+                <input type="text" name="title" class="form-control" required placeholder="Task title" />
+              </div>
+            
+              <!-- Task Description -->
+              <div class="mb-3">
+                <label class="form-label">Description</label>
+                <textarea name="description" class="form-control" required placeholder="Task description..."></textarea>
+              </div>
+            
+              <!-- Due Date -->
+              <div class="mb-3">
+                <label class="form-label">Due Date</label>
+                <input type="date" name="due_date" class="form-control" required />
+              </div>
+            
+              <!-- Priority -->
+              <div class="mb-3">
+                <label class="form-label">Priority</label>
+                <select name="priority" class="form-select" required>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+            
+              <div class="modal-footer">
+                <button type="submit" class="btn btn-success">Add Task</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              </div>
+            </form>
+            
+          </div>
+        </div>
+      </div>
+    </div>
+
+
     <script>
+      var csrfToken = "{{ csrf_token }}";
+      function loadTasks(projectId) {
+        if (!projectId) return;  // If no project is selected, do nothing
+      
+        fetch(`/project/${projectId}/`)  // Adjust the URL to match your Django URL pattern
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              const taskTableBody = document.querySelector("tbody");
+              taskTableBody.innerHTML = ""; // Clear existing tasks
+      
+              if (data.tasks.length > 0) {
+                data.tasks.forEach((task, index) => {
+                  const row = `
+                    <tr id="task-${task.id}">
+                      <td>${index + 1}</td>
+                      <td>
+                        ${task.completed ? "✅" : `<input type="checkbox" onclick="completeTask(${task.id})">`}
+                      </td>
+                      <td>${task.title}</td>
+                      <td>${task.description}</td>
+                      <td>${task.priority}</td>
+                      <td>${task.due_date}</td>
+                    </tr>
+                  `;
+                  taskTableBody.innerHTML += row;
+                });
+              } else {
+                taskTableBody.innerHTML = `<tr><td colspan="6" class="text-center">No tasks yet.</td></tr>`;
+              }
+            } else {
+              alert("Failed to load tasks.");
+            }
+          })
+          .catch(error => console.error("Error fetching tasks:", error));
+      }
+      
       function updateField(taskId, fieldName, fieldValue) {
         fetch("{% url 'update_task' 0 %}".replace('0', taskId), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token }}',
+            'X-CSRFToken': csrfToken,
           },
           body: JSON.stringify({
             field_name: fieldName,
@@ -163,8 +262,45 @@
           console.error("Error:", error);
         });
       }
-    </script>
+      
+      function openAddTaskModal() {
+      // Get selected project ID from dropdown
+      let selectedProjectId = document.getElementById("projectDropdown").value;
 
+      // Set the project_id hidden field inside the modal form
+      document.getElementById("taskProjectId").value = selectedProjectId;
+
+      // Show the modal
+      new bootstrap.Modal(document.getElementById("addTaskModal")).show();
+    }
+
+    document.getElementById("addTaskForm").addEventListener("submit", function (event) {
+      event.preventDefault(); // Prevent default form submission
+
+      let formData = new FormData(this); // Get form data
+
+      fetch("/add/", {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": csrfToken
+        },
+        body: formData
+      })
+        .then(response => response.json()) // Expecting JSON response
+        .then(data => {
+          if (data.success) {
+            alert("Task added successfully!"); // Show success message
+            document.getElementById("addTaskForm").reset(); // Reset form
+            let modal = bootstrap.Modal.getInstance(document.getElementById("addTaskModal"));
+            modal.hide(); // Close modal
+            loadTasks(document.getElementById("projectDropdown").value); // Reload tasks
+          } else {
+            alert("Error adding task: " + data.message); // Show error message
+          }
+        })
+        .catch(error => console.error("Error:", error));
+          });
+      </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
   </body>
 </html>

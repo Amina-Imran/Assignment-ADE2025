@@ -9,15 +9,18 @@ urlpatterns = [
     path('custom-admin/', views.admin_panel, name='custom-admin'),  # Admin panel URL
     path('admin/create/', views.create_admin, name='create_admin'),
     path('delete_user/<str:username>/', views.delete_user, name='delete_user'),
+    path('change_password/', views.change_password, name="change_password"),
 
     # Project Urls
     path("projects/add/", views.add_project, name="add_project"), 
     path("projects/", views.get_all_projects, name="get_all_projects"),
     path("projects/delete/<int:project_id>/", views.delete_project, name="delete_project"),
+    path("project/<int:project_id>/", views.project_task_list, name="project_task_list"),
+    
     
     # After login, redirect based on user role
-    path('admin/tasks/<int:project_id>/', views.admin_task_list, name='admin_task_list'),
-    path('user/tasks/<int:project_id>/', views.user_task_list, name='user_task_list'),
+    path('admin/tasks', views.admin_task_list, name='admin_task_list'),
+    path('user/tasks', views.user_task_list, name='user_task_list'),
 
     # Task-related URLs for adding, completing, deleting, and updating tasks
     path('add/', views.add_task, name='add_task'),

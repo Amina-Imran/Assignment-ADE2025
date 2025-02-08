@@ -19,28 +19,29 @@ from django.http import JsonResponse
 def is_staff(user):
     return user.is_staff
 # Display tasks for a specific project for the admin
-def admin_task_list(request, project_id=None):
-    if project_id:
+def admin_task_list(request):
+    projects = Project.objects.all()
+    if projects.exists():
+        project_id = projects.first().id  
         tasks = Task.objects.filter(project_id=project_id)
-    else:
-        tasks = Task.objects.all()
+        return render(request, 'tasks/admin.html', {'tasks': tasks, 'projects': projects, 'project_id': project_id})
+    
+    return render(request, 'tasks/admin.html', {'tasks': None, 'projects': None, 'project_id': None})
+
+@login_required
+def user_task_list(request):
     
     projects = Project.objects.all()
-    
-    return render(request, 'tasks/admin.html', {'tasks': tasks, 'projects': projects, 'project_id': project_id})
-
-# Display tasks for a specific project for the user
-def user_task_list(request, project_id=None):
-    if project_id:
+    if projects.exists():
+        project_id = projects.first().id  
         tasks = Task.objects.filter(project_id=project_id)
-    else:
-        tasks = Task.objects.all()
+        return render(request, 'tasks/user.html', {'tasks': tasks, 'projects': projects, 'project_id': project_id})
     
-    projects = Project.objects.all()
-    
-    return render(request, 'tasks/user.html', {'tasks': tasks, 'projects': projects, 'project_id': project_id})
+    return render(request, 'tasks/user.html', {'tasks': None, 'projects': None, 'project_id': None})
 
-# Add a task for a specific project (accessible by both admin and user)
+
+@user_passes_test(is_staff)
+@login_required
 def add_task(request):
     if request.method == 'POST':
         title = request.POST['title']
@@ -50,7 +51,7 @@ def add_task(request):
         project_id = request.POST['project_id']
         
         project = get_object_or_404(Project, id=project_id)
-        
+         
         Task.objects.create(
             title=title,
             description=description,
@@ -60,10 +61,9 @@ def add_task(request):
             project=project
         )
         
-        return redirect('task_list', project_id=project_id)
+        return JsonResponse({'success': True, "message": "Task added successfully"}, status=200)
     
-    projects = Project.objects.all()
-    return render(request, 'tasks/add_task.html', {'projects': projects})
+    return JsonResponse({'success': False, "message": "not a valid url"}, status=400)
 
 # Mark a task as completed (accessible by both admin and user)
 def complete_task(request, task_id):
@@ -97,6 +97,23 @@ def update_task(request, task_id):
             return JsonResponse({'success': True})
         
     return JsonResponse({'success': False}, status=400)
+
+from django.shortcuts import get_object_or_404
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+
+@login_required
+def project_task_list(request, project_id):
+    if request.method == "GET":
+        # Ensure the project exists
+        get_object_or_404(Project, id=project_id)
+        # Get all tasks related to this project
+        tasks = Task.objects.filter(project_id=project_id).values()  # Adjust fields as needed
+
+        return JsonResponse({"success": True, "project_id": project_id, "tasks": list(tasks)}, status=200)
+
+    return JsonResponse({"success": False, "error": "Invalid request"}, status=400)
+
 
 @user_passes_test(is_staff)
 @login_required
@@ -141,9 +158,9 @@ def sign_in(request):
             if user.is_superuser:
                 return redirect("custom-admin")
             elif user.is_staff:  # Check if the user is an admin
-                return redirect('admin_task_list', project_id=0)  # Redirect to admin dashboard
+                return redirect('admin_task_list')  # Redirect to admin dashboard
             else:
-                return redirect('user_task_list', project_id=0)  # Redirect to user dashboard
+                return redirect('user_task_list')  # Redirect to user dashboard
         else:
             error_message = "Invalid username or password"
             return render(request, 'tasks/login.html', {'error_message': error_message})
