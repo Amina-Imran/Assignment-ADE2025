@@ -15,6 +15,9 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 
+
+def is_staff(user):
+    return user.is_staff
 # Display tasks for a specific project for the admin
 def admin_task_list(request, project_id=None):
     if project_id:
@@ -95,7 +98,34 @@ def update_task(request, task_id):
         
     return JsonResponse({'success': False}, status=400)
 
-# Sign-in view
+@user_passes_test(is_staff)
+@login_required
+def add_project(request):
+    if request.method == "POST":
+        project_name = request.POST.get("project_name")  # Safely get input
+        project = Project.objects.create(name=project_name)  # Creates and saves project
+        return JsonResponse({"success": True, "project_id": project.id}, status=200)  # ✅ Return ID only
+
+    return JsonResponse({"success": False, "error": "Invalid request"}, status=400)  # Handle non-POST requests
+
+@login_required
+def get_all_projects(request):
+    if request.method == "GET":
+        projects = list(Project.objects.all())
+        return JsonResponse({"success": True, "projects": projects}, status=200)
+    return JsonResponse({"success": False, "error": "Invalid request"}, status=400)  # Handle non-POST requests
+        
+user_passes_test(is_staff)
+@login_required
+def delete_project(request, project_id):
+    if request.method == "POST":  # ✅ Deleting should be POST for safety
+        project = get_object_or_404(Project, id=project_id)  # Ensure project exists
+        project.delete()  # Delete the project
+        return JsonResponse({"success": True, "message": "Project deleted successfully"}, status=200)
+
+    return JsonResponse({"success": False, "error": "Invalid request"}, status=400)  # Handle invalid requests
+    
+##### Authentication Views
 
 def sign_in(request):
     if request.method == 'POST':
@@ -186,12 +216,13 @@ def create_admin(request):
 @user_passes_test(is_superuser)  # Ensure only superusers can access
 def admin_panel(request):
     admins = User.objects.filter(is_staff=True, is_superuser=False)  # List all admins
+    
+     # If it's an AJAX request, return only the list partial
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'partials/admin_list.html', {'admins': admins})
+    
     return render(request, 'tasks/admin_panel.html', {'admins': admins})
 
-
-
-def is_staff(user):
-    return user.is_staff
 
 @login_required
 def change_password(request):
@@ -213,14 +244,17 @@ def change_password(request):
 @login_required
 @user_passes_test(is_superuser)
 def delete_user(request, username):
-    user_to_delete = get_object_or_404(User, username=username)
+    if request.method == "POST":
+        user_to_delete = get_object_or_404(User, username=username)
 
-    # Ensure the user being deleted is a staff member and not a superuser
-    if user_to_delete.is_superuser:
-        return JsonResponse({"status": "error", "message": "Cannot delete a superuser."}, status=403)
+        # Ensure the user being deleted is a staff member and not a superuser
+        if user_to_delete.is_superuser:
+            return JsonResponse({"status": "error", "message": "Cannot delete a superuser."}, status=403)
 
-    if user_to_delete.is_staff:
-        user_to_delete.delete()
-        return JsonResponse({"status": "success"})
+        if user_to_delete.is_staff:
+            user_to_delete.delete()
+            return JsonResponse({"status": "success"})
+        
+        return JsonResponse({"status": "error", "message": "User is not a staff member."}, status=403)
     
-    return JsonResponse({"status": "error", "message": "User is not a staff member."}, status=403)
+    return JsonResponse({"status": "error", "message": "Invalid request method"}) 

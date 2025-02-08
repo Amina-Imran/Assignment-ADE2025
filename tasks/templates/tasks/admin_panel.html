@@ -10,6 +10,19 @@
     />
   </head>
   <body class="bg-light">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="#">Task Management</a>
+        <div class="d-flex">
+          <span class="navbar-text me-3"> Welcome, {{ user.username }} </span>
+          <a href="{% url 'logout_view' %}" class="btn btn-outline-danger">
+            Logout
+          </a>
+        </div>
+      </div>
+    </nav>
+
     <div class="container mt-5">
       <h1 class="text-center">Admin Panel</h1>
 
@@ -187,13 +200,19 @@
       </div>
     </div>
 
-    <!-- Logout Button -->
-    <div class="text-center mt-4">
-      <a href="{% url 'logout_view' %}" class="btn btn-danger">Logout</a>
-    </div>
-
     <!-- Bootstrap JS & Custom JS -->
     <script>
+      var csrfToken = "{{ csrf_token }}";
+      document
+        .getElementById("addAdminModal")
+        .addEventListener("show.bs.modal", function () {
+          document.getElementById("adminForm").reset(); // ✅ Reset form fields
+
+          // ✅ Remove old messages
+          let alerts = document.querySelectorAll(".modal-body .alert");
+          alerts.forEach((alert) => alert.remove());
+        });
+
       function openChangePasswordModal(username) {
         document.getElementById("changePasswordUsername").value = username;
         new bootstrap.Modal(
@@ -205,7 +224,7 @@
         if (confirm("Are you sure you want to delete this user?")) {
           fetch(`/delete_user/${username}/`, {
             method: "POST",
-            headers: { "X-CSRFToken": "{{ csrf_token }}" },
+            headers: { "X-CSRFToken": csrfToken },
           })
             .then((response) => response.json())
             .then((data) => {
@@ -229,6 +248,7 @@
         .getElementById("changePasswordForm")
         .addEventListener("submit", function (event) {
           event.preventDefault();
+
           let password = document.getElementById("newPassword").value;
           let confirmPassword =
             document.getElementById("confirmNewPassword").value;
@@ -241,7 +261,7 @@
           fetch("/change_password/", {
             method: "POST",
             body: formData,
-            headers: { "X-CSRFToken": "{{ csrf_token }}" },
+            headers: { "X-CSRFToken": csrfToken },
           })
             .then((response) => response.json())
             .then((data) => {
@@ -257,6 +277,83 @@
             })
             .catch((error) => console.error("Error:", error));
         });
+
+      document.addEventListener("DOMContentLoaded", function () {
+        document
+          .getElementById("adminForm")
+          .addEventListener("submit", function (event) {
+            event.preventDefault(); // Prevent default form submission
+
+            let password = document.getElementById("password").value;
+            let confirmPassword =
+              document.getElementById("confirm_password").value;
+
+            if (password !== confirmPassword) {
+              alert("Passwords do not match!");
+              return; // Stop submission
+            }
+
+            if (!confirm("Are you sure you want to add this user?")) {
+              return; // Stop execution if user cancels
+            }
+
+            let formData = new FormData(this);
+
+            fetch("/admin/create/", {
+              method: "POST",
+              headers: {
+                "X-CSRFToken": csrfToken,
+              },
+              body: formData,
+            })
+              .then((response) => response.json())
+              .then((data) => {
+                let messageBox = document.createElement("div");
+                messageBox.classList.add("alert", "mt-2");
+
+                if (data.status === "success") {
+                  messageBox.classList.add("alert-success");
+                  messageBox.textContent = "Admin added successfully!";
+
+                  // Close modal after 1 second
+                  setTimeout(() => {
+                    this.reset();
+                    bootstrap.Modal.getInstance(
+                      document.getElementById("addAdminModal")
+                    ).hide();
+                    fetchUpdatedUserList();
+                  }, 1000);
+                } else {
+                  messageBox.classList.add("alert-danger");
+                  messageBox.textContent =
+                    data.message || "Failed to add admin.";
+                }
+
+                document.querySelector(".modal-body").prepend(messageBox);
+              })
+              .catch((error) => console.error("Error:", error));
+          });
+      });
+
+      function fetchUpdatedUserList() {
+        fetch("/custom-admin/") // Fetch updated user list
+          .then((response) => response.text()) // Get HTML response
+          .then((html) => {
+            // Create a temporary DOM parser
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, "text/html");
+
+            // Extract the updated admin list
+            const updatedList = doc.querySelector("#adminList");
+
+            // Replace the existing list
+            if (updatedList) {
+              document.getElementById("adminList").innerHTML =
+                updatedList.innerHTML;
+            }
+          })
+          .catch((error) => console.error("Error fetching users:", error));
+      }
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

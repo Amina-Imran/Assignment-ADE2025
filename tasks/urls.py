@@ -8,7 +8,13 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout_view'), 
     path('custom-admin/', views.admin_panel, name='custom-admin'),  # Admin panel URL
     path('admin/create/', views.create_admin, name='create_admin'),
+    path('delete_user/<str:username>/', views.delete_user, name='delete_user'),
 
+    # Project Urls
+    path("projects/add/", views.add_project, name="add_project"), 
+    path("projects/", views.get_all_projects, name="get_all_projects"),
+    path("projects/delete/<int:project_id>/", views.delete_project, name="delete_project"),
+    
     # After login, redirect based on user role
     path('admin/tasks/<int:project_id>/', views.admin_task_list, name='admin_task_list'),
     path('user/tasks/<int:project_id>/', views.user_task_list, name='user_task_list'),
