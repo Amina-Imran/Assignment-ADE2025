@@ -111,7 +111,7 @@ def add_project(request):
 @login_required
 def get_all_projects(request):
     if request.method == "GET":
-        projects = list(Project.objects.all())
+        projects = list(Project.objects.values("id", "name"))
         return JsonResponse({"success": True, "projects": projects}, status=200)
     return JsonResponse({"success": False, "error": "Invalid request"}, status=400)  # Handle non-POST requests
         
@@ -216,12 +216,15 @@ def create_admin(request):
 @user_passes_test(is_superuser)  # Ensure only superusers can access
 def admin_panel(request):
     admins = User.objects.filter(is_staff=True, is_superuser=False)  # List all admins
-    
+    projects = Project.objects.all()
      # If it's an AJAX request, return only the list partial
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return render(request, 'partials/admin_list.html', {'admins': admins})
+        if request.GET.get("type") == "admins":
+            return render(request, 'partials/admin_list.html', {'admins': admins})
+        elif request.GET.get("type") == "projects":
+            return render(request, 'partials/project_list.html', {'projects': projects})
     
-    return render(request, 'tasks/admin_panel.html', {'admins': admins})
+    return render(request, 'tasks/admin_panel.html', {'admins': admins, "projects": projects})
 
 
 @login_required
