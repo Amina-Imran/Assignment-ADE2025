@@ -11,12 +11,19 @@
   </head>
   <body class="bg-light">
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow">
       <div class="container-fluid">
-        <a class="navbar-brand" href="#">Task Management</a>
-        <div class="d-flex">
-          <span class="navbar-text me-3"> Welcome, {{ user.username }} </span>
-          <a href="{% url 'logout_view' %}" class="btn btn-outline-danger">
+        <!-- Brand Name -->
+        <a class="navbar-brand fw-bold text-light" href="#">Task Management</a>
+
+        <div class="d-flex align-items-center">
+          <!-- Welcome Text -->
+          <span class="navbar-text text-light me-3 fw-medium">
+            Welcome, {{ user.username }}
+          </span>
+
+          <!-- Logout Button -->
+          <a href="{% url 'logout_view' %}" class="btn btn-danger px-3 fw-bold">
             Logout
           </a>
         </div>
