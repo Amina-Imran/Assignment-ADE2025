@@ -33,14 +33,13 @@ def user_task_list(request):
     
     projects = Project.objects.all()
     if projects.exists():
-        project_id = projects.first().id  
+        project_id = projects.first().id
         tasks = Task.objects.filter(project_id=project_id)
         return render(request, 'tasks/user.html', {'tasks': tasks, 'projects': projects, 'project_id': project_id})
     
     return render(request, 'tasks/user.html', {'tasks': None, 'projects': None, 'project_id': None})
 
 
-@user_passes_test(is_staff)
 @login_required
 def add_task(request):
     if request.method == 'POST':
@@ -66,21 +65,24 @@ def add_task(request):
     return JsonResponse({'success': False, "message": "not a valid url"}, status=400)
 
 # Mark a task as completed (accessible by both admin and user)
+@login_required
 def complete_task(request, task_id):
-    task = get_object_or_404(Task, id=task_id)
-    
-    if not task.completed:
-        task.completed = True
-        task.save()
+    if request.method == "GET":
+        task = get_object_or_404(Task, id=task_id)
+
+        if not task.completed:
+            task.completed = True
+            task.save()
         
-    return redirect('task_list', project_id=task.project.id)
+        return JsonResponse({'success': True, "project_id": task.project.id}, status=200)
+    return JsonResponse({'success': False, "message": "not a valid url"}, status=400) 
 
 # Delete a task (admin only)
 def delete_task(request, task_id):
     task = get_object_or_404(Task, id=task_id)
     project_id = task.project.id
     task.delete()
-    return redirect('task_list', project_id=project_id)
+    return JsonResponse({'success': True, "project_id": task.project.id}, status=200)
 
 @csrf_exempt
 def update_task(request, task_id):
