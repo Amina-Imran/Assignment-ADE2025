@@ -77,7 +77,7 @@ def complete_task(request, task_id):
         return JsonResponse({'success': True, "project_id": task.project.id}, status=200)
     return JsonResponse({'success': False, "message": "not a valid url"}, status=400) 
 
-# Delete a task (admin only)
+@user_passes_test(is_staff)
 def delete_task(request, task_id):
     task = get_object_or_404(Task, id=task_id)
     project_id = task.project.id
@@ -137,8 +137,9 @@ def get_all_projects(request):
 user_passes_test(is_staff)
 @login_required
 def delete_project(request, project_id):
-    if request.method == "POST":  # ✅ Deleting should be POST for safety
-        project = get_object_or_404(Project, id=project_id)  # Ensure project exists
+    if request.method == "POST":
+        print("in here")
+        project = get_object_or_404(Project, id=project_id)
         project.delete()  # Delete the project
         return JsonResponse({"success": True, "message": "Project deleted successfully"}, status=200)
 
